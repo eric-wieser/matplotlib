@@ -999,7 +999,8 @@ class Axes3D(Axes):
         point.
 
         """
-        pb_aspect = np.array([1, 1, 0.75])
+        # chosen for similarity with the previous initial view
+        pb_aspect = np.array([4, 4, 3]) / 3.5
 
         relev, razim = np.pi * self.elev/180, np.pi * self.azim/180
 
