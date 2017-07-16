@@ -1156,8 +1156,8 @@ class Axes3D(Axes):
             return ''
 
         if self.button_pressed in self._rotate_btn:
-            return 'azimuth=%d deg, elevation=%d deg ' % (self.azim, self.elev)
-            # ignore xd and yd and display angles instead
+            return 'azimuth={:.0f} deg, elevation={:.0f} deg '.format(
+                self.azim, self.elev)
 
         # nearest edge
         p0, p1 = min(self.tunit_edges(),
@@ -1177,7 +1177,7 @@ class Axes3D(Axes):
         xs = self.format_xdata(x)
         ys = self.format_ydata(y)
         zs = self.format_zdata(z)
-        return 'x=%s, y=%s, z=%s' % (xs, ys, zs)
+        return 'x={}, y={}, z={}'.format(xs, ys, zs)
 
     def _on_move(self, event):
         """Mouse moving
