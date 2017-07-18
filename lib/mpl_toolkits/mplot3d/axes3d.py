@@ -78,6 +78,11 @@ class Axes3D(Axes):
 
         self.initial_azim = kwargs.pop('azim', -60)
         self.initial_elev = kwargs.pop('elev', 30)
+        if 'pb_aspect' in kwargs:
+            self.pb_aspect = np.asarray(kwargs['pb_aspect'])
+        else:
+            # chosen for similarity with the previous initial view
+            self.pb_aspect = np.array([4, 4, 3]) / 3.5
         zscale = kwargs.pop('zscale', None)
         sharez = kwargs.pop('sharez', None)
         self.set_proj_type(kwargs.pop('proj_type', 'persp'))
@@ -247,6 +252,21 @@ class Axes3D(Axes):
                  (tc[7], tc[4])]
         return edges
 
+    def set_pb_aspect(self, pb_aspect, zoom=1):
+        self.pb_aspect = pb_aspect * 1.8 * zoom / proj3d.mod(pb_aspect)
+
+    def set_aspect(self, aspect, adjustable=None, anchor=None):
+        if isinstance(aspect, six.string_types):
+            return super(Axes3D, self).set_aspect(
+                aspect=aspect, adjustable=adjustable, anchor=anchor)
+        else:
+            super(Axes3D, self).set_aspect(
+                aspect='auto', adjustable=adjustable, anchor=anchor)
+            aspect = np.asarray(aspect)
+            if aspect.shape != (3,):
+                raise ValueError("aspect must be a vector of shape (3,)")
+            self._aspect = aspect
+
     def apply_aspect(self, position=None):
         if position is None:
             position = self.get_position(original=True)
@@ -260,6 +280,47 @@ class Axes3D(Axes):
         pb = position.frozen()
         pb1 = pb.shrunk_to_aspect(box_aspect, pb, fig_aspect)
         self.set_position(pb1.anchored(self.get_anchor(), pb), 'active')
+
+        # adjust the plot ratio to match the figure size
+        aspect_2d = (figW * pb.width) / (figH * pb.height)
+        self.set_pb_aspect(np.array([aspect_2d, aspect_2d, 1]))
+
+        aspect = self.get_aspect()
+        if isinstance(aspect, np.ndarray):
+            pass
+        elif aspect == 'auto':
+            return
+        elif aspect == 'equal':
+            aspect = np.array([1, 1, 1])
+
+        get_bound = [getattr(self, 'get_{}bound'.format(ax)) for ax in 'xyz']
+        set_bound = [getattr(self, 'set_{}bound'.format(ax)) for ax in 'xyz']
+
+        # get bounds
+        upper = np.empty(3)
+        lower = np.empty(3)
+        for i in range(3):
+            lower[i], upper[i] = get_bound[i]()
+
+        if self._adjustable == 'datalim':
+
+            center = (upper + lower) / 2.0
+            span = (upper - lower) / 2.0
+
+            # compute scaling
+            rel_aspect = self.pb_aspect / aspect
+            scale = rel_aspect / span
+            scale /= min(scale)
+
+            # rescale around center point
+            lower = center - span*scale
+            upper = center + span*scale
+            for i in range(3):
+                set_bound[i](lower[i], upper[i])
+        elif self._adjustable in ['box', 'box-forced']:
+            # override the plot ratio chosen earlier
+            scale = (upper - lower) * aspect
+            self.set_pb_aspect(scale)
 
     def draw(self, renderer):
         # draw the background patch
@@ -999,9 +1060,6 @@ class Axes3D(Axes):
         point.
 
         """
-        # chosen for similarity with the previous initial view
-        pb_aspect = np.array([4, 4, 3]) / 3.5
-
         relev, razim = np.pi * self.elev/180, np.pi * self.azim/180
 
         xmin, xmax = self.get_xlim3d()
@@ -1011,10 +1069,10 @@ class Axes3D(Axes):
         # transform to uniform world coordinates 0-1.0,0-1.0,0-1.0
         worldM = proj3d.world_transformation(xmin, xmax,
                                              ymin, ymax,
-                                             zmin, zmax, pb_aspect=pb_aspect)
+                                             zmin, zmax, pb_aspect=self.pb_aspect)
 
         # look into the middle of the new coordinates
-        R = pb_aspect / 2
+        R = self.pb_aspect / 2
 
         xp = R[0] + np.cos(razim) * np.cos(relev) * self.dist
         yp = R[1] + np.sin(razim) * np.cos(relev) * self.dist
