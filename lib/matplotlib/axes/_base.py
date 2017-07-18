@@ -1268,7 +1268,7 @@ class _AxesBase(martist.Artist):
                 and aspect in ('equal', 'auto')):
             self._aspect = aspect
         else:
-            self._aspect = float(aspect)  # raise ValueError if necessary
+            self._aspect = np(aspect)  # raise ValueError if necessary
 
         if adjustable is not None:
             self.set_adjustable(adjustable)
@@ -1532,11 +1532,16 @@ class _AxesBase(martist.Artist):
             The axis limits
 
         """
+        _axes = kwargs.pop('_axes', 'xy')
+
+        def _get_lims():
+            lims = ()
+            for ax in _axes:
+                lims += getattr(self, 'get_{}lim'.format(ax))()
+            return lims
 
         if len(v) == 0 and len(kwargs) == 0:
-            xmin, xmax = self.get_xlim()
-            ymin, ymax = self.get_ylim()
-            return xmin, xmax, ymin, ymax
+            return _get_lims()
 
         emit = kwargs.get('emit', True)
 
@@ -1584,27 +1589,23 @@ class _AxesBase(martist.Artist):
         try:
             v[0]
         except IndexError:
-            xmin = kwargs.get('xmin', None)
-            xmax = kwargs.get('xmax', None)
-            auto = False  # turn off autoscaling, unless...
-            if xmin is None and xmax is None:
-                auto = None  # leave autoscaling state alone
-            xmin, xmax = self.set_xlim(xmin, xmax, emit=emit, auto=auto)
-
-            ymin = kwargs.get('ymin', None)
-            ymax = kwargs.get('ymax', None)
-            auto = False  # turn off autoscaling, unless...
-            if ymin is None and ymax is None:
-                auto = None  # leave autoscaling state alone
-            ymin, ymax = self.set_ylim(ymin, ymax, emit=emit, auto=auto)
-            return xmin, xmax, ymin, ymax
-
+            for ax in _axes:
+                ax_min = kwargs.get('{}min'.format(ax), None)
+                ax_max = kwargs.get('{}max'.format(ax), None)
+                auto = False  # turn off autoscaling, unless...
+                if ax_min is None and ax_max is None:
+                    auto = None  # leave autoscaling state alone
+                ax_min, ax_max = self.set_xlim(ax_min, ax_max,
+                                               emit=emit, auto=auto)
         v = v[0]
-        if len(v) != 4:
-            raise ValueError('v must contain [xmin xmax ymin ymax]')
+        if len(v) != 2*len(_axes):
+            raise ValueError('v must contain [{}]'.format(
+                ' '.join('{}min {}max'.format(ax) for ax in _axes)
+            ))
 
-        self.set_xlim([v[0], v[1]], emit=emit, auto=False)
-        self.set_ylim([v[2], v[3]], emit=emit, auto=False)
+        for i, ax in enumerate(_axes):
+            getattr(self, 'set_{}lim'.format(ax))(
+                [v[i*2], v[i*2+1]], emit=emit, auto=False)
 
         return v
 
