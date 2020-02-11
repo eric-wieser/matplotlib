@@ -98,9 +98,7 @@ def test_contour3d():
     ax.contour(X, Y, Z, zdir='z', offset=-100, cmap=cm.coolwarm)
     ax.contour(X, Y, Z, zdir='x', offset=-40, cmap=cm.coolwarm)
     ax.contour(X, Y, Z, zdir='y', offset=40, cmap=cm.coolwarm)
-    ax.set_xlim(-40, 40)
-    ax.set_ylim(-40, 40)
-    ax.set_zlim(-100, 100)
+    ax.axis(xmin=-40, xmax=40, ymin=-40, ymax=40, zmin=-100, zmax=100)
 
 
 @image_comparison(['contourf3d.png'], remove_text=True)
@@ -111,9 +109,7 @@ def test_contourf3d():
     ax.contourf(X, Y, Z, zdir='z', offset=-100, cmap=cm.coolwarm)
     ax.contourf(X, Y, Z, zdir='x', offset=-40, cmap=cm.coolwarm)
     ax.contourf(X, Y, Z, zdir='y', offset=40, cmap=cm.coolwarm)
-    ax.set_xlim(-40, 40)
-    ax.set_ylim(-40, 40)
-    ax.set_zlim(-100, 100)
+    ax.axis(xmin=-40, xmax=40, ymin=-40, ymax=40, zmin=-100, zmax=100)
 
 
 @image_comparison(['contourf3d_fill.png'], remove_text=True)

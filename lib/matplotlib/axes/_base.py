@@ -365,6 +365,8 @@ class _process_plot_var_args:
 class _AxesBase(martist.Artist):
     name = "rectilinear"
 
+    _axis_names = 'xy'
+
     _shared_x_axes = cbook.Grouper()
     _shared_y_axes = cbook.Grouper()
     _twinned_axes = cbook.Grouper()
@@ -1730,30 +1732,41 @@ class _AxesBase(martist.Artist):
                         "argument to axis() is deprecated and will raise a "
                         "TypeError %(removal)s.")
                 limits = args[0]
-                try:
-                    xmin, xmax, ymin, ymax = limits
-                except (TypeError, ValueError):
-                    raise TypeError('the first argument to axis() must be an '
-                                    'interable of the form '
-                                    '[xmin, xmax, ymin, ymax]')
+                if len(limits) != 2*len(self._axis_names):
+                    raise TypeError(
+                        'The first argument to axis() must be an iterable of '
+                        'the form [{}]'.format(', '.join(
+                            '{0}min, {0}max'.format(ax)
+                            for ax in self._axis_names
+                        )
+                    ))
+                limits = {
+                    ax: limits[2*i:2*(i+1)]
+                    for i, ax in enumerate(self._axis_names)
+                }
             else:
-                xmin = kwargs.pop('xmin', None)
-                xmax = kwargs.pop('xmax', None)
-                ymin = kwargs.pop('ymin', None)
-                ymax = kwargs.pop('ymax', None)
-            xauto = (None  # Keep autoscale state as is.
-                     if xmin is None and xmax is None
-                     else False)  # Turn off autoscale.
-            yauto = (None
-                     if ymin is None and ymax is None
-                     else False)
-            self.set_xlim(xmin, xmax, emit=emit, auto=xauto)
-            self.set_ylim(ymin, ymax, emit=emit, auto=yauto)
+                limits = {}
+                for ax in self._axis_names:
+                    ax_min = kwargs.get('{}min'.format(ax), None)
+                    ax_max = kwargs.get('{}max'.format(ax), None)
+                    limits[ax] = (ax_min, ax_max)
+
+            for ax, (ax_min, ax_max) in limits.items():
+                ax_auto = (None  # Keep autoscale state as is.
+                           if ax_min is None and ax_max is None
+                           else False)  # Turn off autoscale.
+                set_ax_lim = getattr(self, 'set_{}lim'.format(ax))
+                set_ax_lim(ax_min, ax_max, emit=emit, auto=ax_auto)
         if kwargs:
             cbook.warn_deprecated(
                 "3.1", message="Passing unsupported keyword arguments to "
                 "axis() will raise a TypeError %(removal)s.")
-        return (*self.get_xlim(), *self.get_ylim())
+
+        lims = ()
+        for ax in self._axis_names:
+            get_ax_lim = getattr(self, 'get_{}lim'.format(ax))
+            lims += get_ax_lim()
+        return lims
 
     def get_legend(self):
         """Return the `Legend` instance, or None if no legend is defined."""

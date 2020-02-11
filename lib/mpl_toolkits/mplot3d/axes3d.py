@@ -46,6 +46,7 @@ class Axes3D(Axes):
     3D axes object.
     """
     name = '3d'
+    _axis_names = 'xyz'
     _shared_z_axes = cbook.Grouper()
 
     def __init__(
